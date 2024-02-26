@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract AssetManagement {
+    struct Asset {
+        string name;
+        address owner;
+        uint256 value;
+        bool forSale;
+    }
+
+    mapping(address => uint256) public balances;
+    mapping(address => mapping(uint256 => bool)) public voted;
+    mapping(uint256 => uint256) public votes;
+
+    Asset[] public assets;
+
+    event AssetRegistered(uint256 indexed id, string name, uint256 value);
+    event AssetTransferred(uint256 indexed id, address from, address to);
+    event AssetValueChanged(uint256 indexed id, uint256 oldValue, uint256 newValue);
+    event AssetForSale(uint256 indexed id);
+    event AssetNotForSale(uint256 indexed id);
+    event Voted(address indexed voter, uint256 indexed id);
+
+    function registerAsset(string memory _name, uint256 _value) external {
+        uint256 id = assets.length;
+        assets.push(Asset(_name, msg.sender, _value, false));
+        balances[msg.sender]++;
+        emit AssetRegistered(id, _name, _value);
+    }
+
+    function transferAsset(uint256 _id, address _to) external {
+        require(assets[_id].owner == msg.sender, "You are not the owner of this asset");
+        assets[_id].owner = _to;
+        balances[msg.sender]--;
+        balances[_to]++;
+        emit AssetTransferred(_id, msg.sender, _to);
+    }
+
+    function setValue(uint256 _id, uint256 _newValue) external {
+        require(assets[_id].owner == msg.sender, "You are not the owner of this asset");
+        emit AssetValueChanged(_id, assets[_id].value, _newValue);
+        assets[_id].value = _newValue;
+    }
+
+    function toggleForSale(uint256 _id) external {
+        require(assets[_id].owner == msg.sender, "You are not the owner of this asset");
+        assets[_id].forSale = !assets[_id].forSale;
+        if (assets[_id].forSale) {
+            emit AssetForSale(_id);
+        } else {
+            emit AssetNotForSale(_id);
+        }
+    }
+
+    function vote(uint256 _id) external {
+        require(!voted[msg.sender][_id], "You have already voted for this asset");
+        voted[msg.sender][_id] = true;
+        votes[_id]++;
+        emit Voted(msg.sender, _id);
+    }
+
+    function getAssetCount() external view returns (uint256) {
+        return assets.length;
+    }
+}
